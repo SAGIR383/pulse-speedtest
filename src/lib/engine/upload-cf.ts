@@ -30,7 +30,10 @@ function makeRandomBlob(bytes: number): Blob {
   for (let off = 0; off < bytes; off += STEP) {
     crypto.getRandomValues(buf.subarray(off, Math.min(off + STEP, bytes)));
   }
-  return new Blob([buf], { type: 'application/octet-stream' });
+  // No `type` → the browser sends Content-Type: text/plain (a CORS-safe value)
+  // and does NOT trigger a preflight. Setting application/octet-stream here
+  // would re-introduce the preflight that breaks the upload.
+  return new Blob([buf]);
 }
 
 export async function measureUploadCf(
@@ -69,7 +72,12 @@ export async function measureUploadCf(
           cache: 'no-store',
           body: blob,
           signal: opts.signal,
-          headers: { 'content-type': 'application/octet-stream' },
+          // NOTE: deliberately NO custom Content-Type header. Setting one makes
+          // this a "non-simple" CORS request, forcing a preflight OPTIONS that
+          // Cloudflare's __up endpoint rejects cross-origin — which silently
+          // failed every upload (0.00 Mbps). A bare Blob body keeps it a
+          // "simple" request that skips preflight, matching how Cloudflare's
+          // own speedtest client uploads.
         });
         const reqMs = performance.now() - reqStart;
         if (!opts.signal?.aborted && reqMs > 0) {
