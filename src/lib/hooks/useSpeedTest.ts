@@ -22,6 +22,12 @@ import type {
 // Optionally, point at a standalone telemetry server via env var.
 const ORIGIN = process.env.NEXT_PUBLIC_TELEMETRY_ORIGIN?.replace(/\/$/, '') ?? '';
 
+// Measurement backend. Defaults to Cloudflare's speed test network for
+// ISP-accurate results; set NEXT_PUBLIC_MEASUREMENT_BACKEND=origin to use the
+// app's own endpoints instead (measures path to our CDN edge).
+const BACKEND: 'origin' | 'cloudflare' =
+  process.env.NEXT_PUBLIC_MEASUREMENT_BACKEND === 'origin' ? 'origin' : 'cloudflare';
+
 const ENDPOINTS = {
   ping: `${ORIGIN}/api/ping`,
   download: `${ORIGIN}/api/download`,
@@ -87,6 +93,7 @@ export function useSpeedTest() {
     try {
       const handle = runSpeedTestClient({
         endpoints: ENDPOINTS,
+        backend: BACKEND,
         server,
         location,
         isp,
