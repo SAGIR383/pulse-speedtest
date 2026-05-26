@@ -9,6 +9,8 @@ import Recommendations from '@/components/analytics/Recommendations';
 import AnimatedNumber from './AnimatedNumber';
 import Icon from '@/components/ui/Icon';
 import { formatMbps } from '@/lib/utils/format';
+import PlanComparison from '@/components/analytics/PlanComparison';
+import { shareResultCard } from '@/lib/utils/share';
 
 interface ResultsViewProps {
   result: TestResult;
@@ -86,12 +88,32 @@ export default function ResultsView({ result, diagnostics, onRetest }: ResultsVi
             : 'Location unavailable'}
           {result.location?.source === 'gps' && <span className="text-[10px] text-aurora-mint">· GPS</span>}
         </div>
-        <div className="flex items-center gap-6 text-titanium-300">
+        <div className="flex items-center gap-6 text-titanium-300 flex-wrap">
           <span>Packet loss <span className="tabular text-titanium-100">{result.packetLoss}%</span></span>
           <span>Peak ↓ <span className="tabular text-titanium-100">{formatMbps(result.downloadDetail.peak)}</span></span>
+          {result.bufferbloat !== undefined && (
+            <span>
+              Bufferbloat{' '}
+              <span
+                className="tabular"
+                style={{
+                  color:
+                    result.bufferbloat < 30 ? '#7affc4' : result.bufferbloat < 100 ? '#ff9d7a' : '#ff6b6b',
+                }}
+              >
+                +{result.bufferbloat}ms
+              </span>
+            </span>
+          )}
+          {result.connectionType && (
+            <span className="hidden sm:inline">{result.connectionType}</span>
+          )}
           <span className="hidden sm:inline">{result.isp ?? 'Unknown ISP'}</span>
         </div>
       </div>
+
+      {/* Compare to user's subscribed plan */}
+      <PlanComparison result={result} />
 
       {/* AI insight cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -106,8 +128,8 @@ export default function ResultsView({ result, diagnostics, onRetest }: ResultsVi
         <Recommendations items={diagnostics.recommendations} />
       </div>
 
-      {/* Retest CTA */}
-      <div className="flex justify-center pt-2">
+      {/* Retest + Share CTAs */}
+      <div className="flex flex-wrap justify-center gap-3 pt-2">
         <button
           onClick={onRetest}
           className="group relative px-8 py-3.5 rounded-full surface-strong text-titanium-100 font-medium tracking-wide transition-all hover:scale-[1.03] active:scale-95"
@@ -115,6 +137,15 @@ export default function ResultsView({ result, diagnostics, onRetest }: ResultsVi
           <span className="relative z-10 flex items-center gap-2">
             <Icon name="zap" size={16} />
             Test again
+          </span>
+        </button>
+        <button
+          onClick={() => shareResultCard(result, diagnostics.healthScore, diagnostics.headline)}
+          className="group relative px-8 py-3.5 rounded-full surface text-titanium-200 font-medium tracking-wide transition-all hover:scale-[1.03] active:scale-95 hover:text-titanium-100"
+        >
+          <span className="relative z-10 flex items-center gap-2">
+            <Icon name="globe" size={16} />
+            Share result
           </span>
         </button>
       </div>

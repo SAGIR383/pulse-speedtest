@@ -4,6 +4,8 @@ import { measureUpload } from './upload';
 import { measureLatencyCf } from './latency-cf';
 import { measureDownloadCf } from './download-cf';
 import { measureUploadCf } from './upload-cf';
+import { LoadedLatencyProbe } from './loaded-latency';
+import { detectConnection } from './connection';
 import { computeHealthScore } from '../ai/score';
 import type {
   LiveState,
@@ -111,6 +113,12 @@ export async function runSpeedTest(opts: RunOptions): Promise<TestResult> {
     state.samples.push(sample);
     emit();
   };
+
+  // Start a loaded-latency probe concurrently with the download to measure
+  // bufferbloat — how much latency rises while the link is saturated.
+  const bloatProbe = new LoadedLatencyProbe();
+  bloatProbe.start(opts.signal);
+
   const download =
     backend === 'cloudflare'
       ? await measureDownloadCf({ durationMs: dlDuration, signal: opts.signal, onSample: onDownloadSample })
@@ -120,6 +128,8 @@ export async function runSpeedTest(opts: RunOptions): Promise<TestResult> {
           signal: opts.signal,
           onSample: onDownloadSample,
         });
+  bloatProbe.stop();
+  const loadedLatency = bloatProbe.result();
   state.download = download.mbps;
   state.current = download.mbps;
   emit();
@@ -166,6 +176,9 @@ export async function runSpeedTest(opts: RunOptions): Promise<TestResult> {
     packetLoss: latency.packetLoss,
   });
 
+  const conn = detectConnection();
+  const bufferbloat = loadedLatency > 0 ? Math.max(0, Math.round((loadedLatency - latency.ping) * 10) / 10) : undefined;
+
   const result: TestResult = {
     id: `pulse_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     timestamp: Date.now(),
@@ -181,6 +194,9 @@ export async function runSpeedTest(opts: RunOptions): Promise<TestResult> {
     location: opts.location,
     isp: opts.isp,
     healthScore,
+    loadedLatency: loadedLatency > 0 ? loadedLatency : undefined,
+    bufferbloat,
+    connectionType: conn.type !== 'unknown' ? conn.label : undefined,
   };
 
   state.phase = 'complete';

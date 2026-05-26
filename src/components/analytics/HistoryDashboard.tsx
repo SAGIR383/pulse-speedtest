@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import type { TestResult } from '@/lib/engine/types';
 import { relativeTime, formatMbps } from '@/lib/utils/format';
+import { exportHistoryCsv } from '@/lib/utils/share';
 
 /**
  * HistoryDashboard — renders speed history from IndexedDB as a sparkline trend
@@ -80,12 +81,20 @@ export default function HistoryDashboard({ results, onClear }: { results: TestRe
       <div className="surface rounded-3xl overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
           <h3 className="font-display text-sm tracking-wide text-titanium-100">Recent tests · {results.length}</h3>
-          <button
-            onClick={onClear}
-            className="text-xs text-titanium-400 hover:text-aurora-ember transition-colors"
-          >
-            Clear history
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => exportHistoryCsv(results)}
+              className="text-xs text-titanium-400 hover:text-aurora-cyan transition-colors"
+            >
+              Export CSV
+            </button>
+            <button
+              onClick={onClear}
+              className="text-xs text-titanium-400 hover:text-aurora-ember transition-colors"
+            >
+              Clear history
+            </button>
+          </div>
         </div>
         <div className="divide-y divide-white/5 max-h-80 overflow-y-auto">
           {results.map((r) => (

@@ -12,6 +12,8 @@ import EnvBanner from '@/components/layout/EnvBanner';
 import TestStage from '@/components/test/TestStage';
 import ResultsView from '@/components/test/ResultsView';
 import HistoryDashboard from '@/components/analytics/HistoryDashboard';
+import MonitorPanel from '@/components/layout/MonitorPanel';
+import { useAutoTest } from '@/lib/hooks/useAutoTest';
 import Icon from '@/components/ui/Icon';
 
 // Map is client-only and lazy — keep Leaflet off the critical path.
@@ -41,6 +43,10 @@ export default function Page() {
     setHistory([]);
   };
 
+  // Monitor mode: auto-test on a schedule while the app is open.
+  const recentDownloads = history.slice(-6).map((h) => h.download);
+  const autoTest = useAutoTest({ start, isRunning, result, recentDownloads });
+
   const showIdle = !isRunning && !result && live.phase !== 'analyzing';
 
   return (
@@ -58,6 +64,9 @@ export default function Page() {
               className="pt-4"
             >
               <h2 className="font-display text-xl font-light text-titanium-100 mb-5">Your network over time</h2>
+              <div className="mb-5">
+                <MonitorPanel settings={autoTest.settings} update={autoTest.update} nextRunAt={autoTest.nextRunAt} />
+              </div>
               <HistoryDashboard results={history} onClear={handleClear} />
             </motion.div>
           ) : (

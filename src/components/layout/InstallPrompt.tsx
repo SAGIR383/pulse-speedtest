@@ -45,7 +45,7 @@ export default function InstallPrompt() {
           <span className="text-sm text-titanium-100">Install Pulse for instant access</span>
           <button
             onClick={install}
-            className="px-3 py-1.5 rounded-full bg-gradient-to-r from-aurora-cyan to-aurora-violet text-void text-xs font-semibold"
+            className="px-3 py-1.5 rounded-full bg-gradient-to-r from-aurora-cyan to-aurora-violet text-on-accent text-xs font-semibold"
           >
             Install
           </button>

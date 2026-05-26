@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import type { LocationInfo } from '@/lib/engine/types';
 import Icon from '@/components/ui/Icon';
+import ThemeToggle from '@/components/layout/ThemeToggle';
 
 interface HeaderProps {
   view: 'test' | 'history';
@@ -19,7 +20,7 @@ export default function Header({ view, setView, location, isp }: HeaderProps) {
         <div className="relative h-9 w-9">
           <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-aurora-cyan to-aurora-violet opacity-90 blur-[2px]" />
           <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-aurora-cyan/80 to-aurora-violet/80 flex items-center justify-center">
-            <span className="text-void font-display font-semibold text-lg">P</span>
+            <span className="text-on-accent font-display font-semibold text-lg">P</span>
           </div>
         </div>
         <div className="leading-none">
@@ -50,12 +51,15 @@ export default function Header({ view, setView, location, isp }: HeaderProps) {
         ))}
       </div>
 
-      {/* Location chip (hidden on small screens) */}
-      <div className="hidden md:flex items-center gap-2 text-xs text-titanium-300 surface rounded-full px-3 py-1.5 max-w-[200px]">
-        <span className="text-aurora-cyan shrink-0"><Icon name="globe" size={13} /></span>
-        <span className="truncate">
-          {location?.city ?? isp ?? 'Detecting…'}
-        </span>
+      {/* Right side: location chip + theme toggle */}
+      <div className="flex items-center gap-2">
+        <div className="hidden md:flex items-center gap-2 text-xs text-titanium-300 surface rounded-full px-3 py-1.5 max-w-[200px]">
+          <span className="text-aurora-cyan shrink-0"><Icon name="globe" size={13} /></span>
+          <span className="truncate">
+            {location?.city ?? isp ?? 'Detecting…'}
+          </span>
+        </div>
+        <ThemeToggle />
       </div>
     </header>
   );

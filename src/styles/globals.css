@@ -4,16 +4,61 @@
 
 :root {
   --void: #05060a;
+  --void-50: #0a0c12;
   --void-100: #0d0f17;
   --void-200: #11141e;
+  --void-300: #161a26;
+  --titanium-50: #f4f6fb;
   --titanium-100: #dfe3ee;
+  --titanium-200: #b9c0d4;
   --titanium-300: #8b94ad;
   --titanium-400: #5f6781;
+  --titanium-500: #3f465c;
   --aurora-cyan: #5ee7e0;
   --aurora-ice: #7cc6ff;
   --aurora-violet: #9d8cff;
   --aurora-ember: #ff9d7a;
   --aurora-mint: #7affc4;
+  /* Theme-aware glass surfaces (white tint on dark) */
+  --surface-grad-from: rgba(255, 255, 255, 0.045);
+  --surface-grad-to: rgba(255, 255, 255, 0.012);
+  --surface-border: rgba(255, 255, 255, 0.06);
+  --surface-strong-from: rgba(255, 255, 255, 0.07);
+  --surface-strong-to: rgba(255, 255, 255, 0.02);
+  --surface-strong-border: rgba(255, 255, 255, 0.09);
+  --track: rgba(255, 255, 255, 0.08);
+  /* Text color for use ON bright aurora accent buttons — always dark. */
+  --on-accent: #05060a;
+}
+
+/* Light theme: a soft daylight take. Dark text for contrast, light surfaces
+   with a subtle dark tint (so glass panels are visible on the light canvas),
+   and slightly deepened accent hues so they read on white. */
+[data-theme='light'] {
+  --void: #eef1f7;
+  --void-50: #e8ecf4;
+  --void-100: #e3e8f1;
+  --void-200: #d8deea;
+  --void-300: #ccd4e3;
+  --titanium-50: #0f1320;
+  --titanium-100: #1a1f2e;
+  --titanium-200: #353c52;
+  --titanium-300: #4a5268;
+  --titanium-400: #6b748c;
+  --titanium-500: #8a92a8;
+  --aurora-cyan: #0f9a92;
+  --aurora-ice: #2f7fd0;
+  --aurora-violet: #6552c8;
+  --aurora-ember: #d96a3c;
+  --aurora-mint: #109a64;
+  /* On light, surfaces use a dark tint so the glass panels are visible. */
+  --surface-grad-from: rgba(20, 30, 55, 0.05);
+  --surface-grad-to: rgba(20, 30, 55, 0.02);
+  --surface-border: rgba(20, 30, 55, 0.1);
+  --surface-strong-from: rgba(20, 30, 55, 0.07);
+  --surface-strong-to: rgba(20, 30, 55, 0.03);
+  --surface-strong-border: rgba(20, 30, 55, 0.14);
+  --track: rgba(20, 30, 55, 0.1);
 }
 
 * {
@@ -47,6 +92,24 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(139, 148, 173, 0.4);
+}
+
+/* Light-theme refinements: the grain looks like dirt on a light canvas, and
+   the Leaflet dark-tile filter must be disabled so the map looks natural. */
+[data-theme='light'] .grain::after {
+  opacity: 0.02;
+}
+[data-theme='light'] .ambient-mesh {
+  opacity: 0.7;
+}
+[data-theme='light'] .leaflet-container {
+  background: var(--void-200) !important;
+}
+[data-theme='light'] .leaflet-tile {
+  filter: none;
+}
+[data-theme='light'] ::-webkit-scrollbar-thumb {
+  background: rgba(20, 30, 55, 0.25);
 }
 
 /* Numeric metrics: tabular figures so digits don't jiggle while animating */
@@ -83,10 +146,10 @@ body {
 .surface {
   background: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.045),
-    rgba(255, 255, 255, 0.012)
+    var(--surface-grad-from),
+    var(--surface-grad-to)
   );
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--surface-border);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
 }
@@ -94,10 +157,10 @@ body {
 .surface-strong {
   background: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.07),
-    rgba(255, 255, 255, 0.02)
+    var(--surface-strong-from),
+    var(--surface-strong-to)
   );
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border: 1px solid var(--surface-strong-border);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
 }
