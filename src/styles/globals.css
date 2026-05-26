@@ -1,0 +1,155 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --void: #05060a;
+  --void-100: #0d0f17;
+  --void-200: #11141e;
+  --titanium-100: #dfe3ee;
+  --titanium-300: #8b94ad;
+  --titanium-400: #5f6781;
+  --aurora-cyan: #5ee7e0;
+  --aurora-ice: #7cc6ff;
+  --aurora-violet: #9d8cff;
+  --aurora-ember: #ff9d7a;
+  --aurora-mint: #7affc4;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  background: var(--void);
+  color: var(--titanium-100);
+  overscroll-behavior: none;
+}
+
+body {
+  font-feature-settings: 'ss01', 'cv01', 'cv03';
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Thin, elegant scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(139, 148, 173, 0.25);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 148, 173, 0.4);
+}
+
+/* Numeric metrics: tabular figures so digits don't jiggle while animating */
+.tabular {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+/* Ambient mesh background layer */
+.ambient-mesh {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(60rem 60rem at 15% 10%, rgba(94, 231, 224, 0.10), transparent 60%),
+    radial-gradient(50rem 50rem at 85% 15%, rgba(157, 140, 255, 0.12), transparent 60%),
+    radial-gradient(70rem 70rem at 50% 100%, rgba(124, 198, 255, 0.08), transparent 65%);
+  filter: blur(20px);
+}
+
+/* Fine grain overlay for cinematic texture */
+.grain::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Glass surface used sparingly for depth (not everywhere) */
+.surface {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.045),
+    rgba(255, 255, 255, 0.012)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.surface-strong {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.07),
+    rgba(255, 255, 255, 0.02)
+  );
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Soft glow text */
+.glow-cyan {
+  text-shadow: 0 0 24px rgba(94, 231, 224, 0.45);
+}
+.glow-violet {
+  text-shadow: 0 0 24px rgba(157, 140, 255, 0.45);
+}
+
+/* Shimmer placeholder */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.03) 25%,
+    rgba(255, 255, 255, 0.08) 37%,
+    rgba(255, 255, 255, 0.03) 63%
+  );
+  background-size: 400% 100%;
+}
+
+/* Leaflet dark adjustments */
+.leaflet-container {
+  background: var(--void-100) !important;
+  font-family: inherit;
+}
+.leaflet-tile {
+  filter: brightness(0.6) invert(1) contrast(0.95) hue-rotate(190deg) saturate(0.55) brightness(0.95);
+}
+.leaflet-control-attribution {
+  background: rgba(5, 6, 10, 0.6) !important;
+  color: var(--titanium-400) !important;
+  backdrop-filter: blur(8px);
+}
+.leaflet-control-attribution a {
+  color: var(--titanium-300) !important;
+}
+.leaflet-control-zoom a {
+  background: rgba(13, 15, 23, 0.85) !important;
+  color: var(--titanium-100) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

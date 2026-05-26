@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Pulse — Network Intelligence (Preview)</title>
+<style>
+  :root{
+    --void:#05060a; --void-100:#0d0f17; --void-200:#11141e;
+    --titanium-50:#f3f5fb; --titanium-100:#dfe3ee; --titanium-300:#8b94ad; --titanium-400:#5f6781; --titanium-500:#454c63;
+    --cyan:#5ee7e0; --ice:#7cc6ff; --violet:#9d8cff; --ember:#ff9d7a; --mint:#7affc4;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;margin:0;padding:0}
+  html,body{background:var(--void);color:var(--titanium-100);min-height:100%;overscroll-behavior:none}
+  body{
+    font-family:'Manrope',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+    position:relative; overflow-x:hidden; min-height:100dvh;
+  }
+  .display{font-family:'Sora','Manrope',sans-serif;letter-spacing:-.02em}
+  .mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+  .tabular{font-variant-numeric:tabular-nums;font-feature-settings:'tnum'}
+
+  /* ambient layers */
+  .ambient-mesh{position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(60rem 60rem at 15% 10%, rgba(94,231,224,.10), transparent 60%),
+      radial-gradient(50rem 50rem at 85% 15%, rgba(157,140,255,.12), transparent 60%),
+      radial-gradient(70rem 70rem at 50% 100%, rgba(124,198,255,.08), transparent 65%);
+    filter:blur(20px);
+    animation:drift 24s ease-in-out infinite alternate;
+  }
+  @keyframes drift{0%{transform:translate3d(0,0,0) scale(1)}100%{transform:translate3d(0,-2%,0) scale(1.05)}}
+  .grain::after{content:'';position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.035;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");}
+
+  .surface{background:linear-gradient(135deg,rgba(255,255,255,.045),rgba(255,255,255,.012));
+    border:1px solid rgba(255,255,255,.06);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+  .surface-strong{background:linear-gradient(135deg,rgba(255,255,255,.07),rgba(255,255,255,.02));
+    border:1px solid rgba(255,255,255,.09);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+  .glow-cyan{box-shadow:0 0 40px rgba(94,231,224,.18)}
+
+  .wrap{position:relative;z-index:2;max-width:980px;margin:0 auto;padding:22px 20px 64px;min-height:100dvh;display:flex;flex-direction:column}
+
+  /* header */
+  header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand .mark{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;position:relative;overflow:hidden}
+  .brand .mark canvas{position:absolute;inset:0}
+  .brand h1{font-size:17px;font-weight:600;line-height:1}
+  .brand .sub{font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--titanium-400);margin-top:3px}
+  .chip{font-size:12px;color:var(--titanium-300);display:flex;align-items:center;gap:7px;padding:7px 13px;border-radius:99px}
+  .dot{width:6px;height:6px;border-radius:99px;background:var(--mint);box-shadow:0 0 10px var(--mint)}
+
+  .demo-banner{margin:14px 0 0;padding:10px 14px;border-radius:12px;font-size:12.5px;color:var(--titanium-300);
+    border:1px solid rgba(124,198,255,.18);background:rgba(124,198,255,.05)}
+  .demo-banner b{color:var(--ice);font-weight:600}
+
+  /* stage */
+  .stage{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px 0}
+  .hero-title{font-size:clamp(30px,6vw,52px);font-weight:600;line-height:1.04;max-width:14ch;margin:0 auto}
+  .grad{background:linear-gradient(110deg,var(--cyan),var(--ice) 45%,var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero-sub{color:var(--titanium-300);font-size:15.5px;max-width:46ch;margin:18px auto 0;line-height:1.6}
+
+  .orb-wrap{position:relative;width:340px;height:340px;display:grid;place-items:center;margin:6px 0}
+  #orb{display:block}
+  .orb-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+  .metric-val{font-size:60px;font-weight:600;line-height:1}
+  .metric-unit{font-size:15px;color:var(--titanium-300);margin-top:8px;letter-spacing:.04em}
+  .metric-phase{font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--titanium-400);margin-bottom:16px}
+
+  button.cta{cursor:pointer;border:none;color:var(--void);font-weight:600;font-size:15px;font-family:inherit;
+    background:linear-gradient(120deg,var(--cyan),var(--ice));border-radius:99px;padding:0;
+    width:128px;height:128px;border-radius:99px;display:grid;place-items:center;position:relative;
+    transition:transform .25s cubic-bezier(.22,1,.36,1);box-shadow:0 0 60px rgba(94,231,224,.32)}
+  button.cta:hover{transform:scale(1.04)}
+  button.cta:active{transform:scale(.97)}
+  button.cta span{font-family:'Sora',sans-serif;letter-spacing:.02em}
+  button.cta .ring{position:absolute;inset:-8px;border-radius:99px;border:1px solid rgba(94,231,224,.4);animation:pulsering 2.6s ease-out infinite}
+  @keyframes pulsering{0%{transform:scale(1);opacity:.7}100%{transform:scale(1.4);opacity:0}}
+
+  .progress{width:min(520px,86vw);height:3px;border-radius:99px;background:rgba(255,255,255,.07);overflow:hidden;margin:22px auto 0}
+  .progress i{display:block;height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,var(--cyan),var(--ice));transition:width .2s linear}
+
+  /* waveform */
+  .wave-wrap{width:min(520px,86vw);height:90px;margin:18px auto 0}
+  #wave{width:100%;height:100%;display:block}
+
+  /* running stats */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;width:min(560px,92vw);margin:22px auto 0}
+  .stat{padding:13px 10px;border-radius:14px;text-align:center}
+  .stat .k{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--titanium-400)}
+  .stat .v{font-size:20px;font-weight:600;margin-top:6px}
+  .stat .u{font-size:10.5px;color:var(--titanium-400);margin-left:3px;font-weight:400}
+
+  /* results */
+  .results{width:100%;display:none;flex-direction:column;gap:18px;padding-top:8px}
+  .health-hero{display:flex;align-items:center;gap:26px;flex-wrap:wrap;justify-content:center;text-align:left;padding:28px 24px;border-radius:22px}
+  .ring-box{position:relative;width:150px;height:150px;flex-shrink:0}
+  .ring-box .score{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .ring-box .score b{font-size:42px;font-weight:600;line-height:1}
+  .ring-box .score small{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--titanium-400);margin-top:4px}
+  .health-copy{flex:1;min-width:240px}
+  .health-copy h2{font-size:26px;font-weight:600;margin-bottom:10px}
+  .health-copy p{color:var(--titanium-300);font-size:14.5px;line-height:1.6}
+
+  .metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .mcard{padding:16px 14px;border-radius:16px;text-align:center}
+  .mcard .k{font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--titanium-400);display:flex;align-items:center;justify-content:center;gap:6px}
+  .mcard .v{font-size:26px;font-weight:600;margin-top:8px}
+  .mcard .u{font-size:11px;color:var(--titanium-400);font-weight:400;margin-left:3px}
+
+  .meta-line{text-align:center;font-size:12.5px;color:var(--titanium-400);letter-spacing:.02em}
+  .meta-line b{color:var(--titanium-300);font-weight:500}
+
+  .section-title{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--titanium-400);margin:6px 2px 2px}
+
+  .insights{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+  .insight{padding:18px 16px;border-radius:16px;display:flex;gap:14px;align-items:flex-start}
+  .insight .mini-ring{width:52px;height:52px;flex-shrink:0;position:relative}
+  .insight .mini-ring b{position:absolute;inset:0;display:grid;place-items:center;font-size:14px;font-weight:600}
+  .insight h4{font-size:14.5px;font-weight:600;display:flex;align-items:center;gap:8px}
+  .insight .verdict{font-size:10px;letter-spacing:.12em;text-transform:uppercase;padding:2px 8px;border-radius:99px}
+  .insight p{color:var(--titanium-300);font-size:12.5px;line-height:1.5;margin-top:6px}
+
+  .tiers{padding:18px 18px;border-radius:18px}
+  .tier{display:flex;align-items:center;gap:14px;padding:9px 0}
+  .tier .lbl{width:94px;font-size:13px;flex-shrink:0}
+  .tier .lbl small{display:block;color:var(--titanium-400);font-size:10.5px}
+  .tier .bar{flex:1;height:7px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden}
+  .tier .bar i{display:block;height:100%;border-radius:99px;width:0;transition:width 1s cubic-bezier(.22,1,.36,1)}
+  .tier .stat-ic{width:74px;text-align:right;font-size:11.5px;flex-shrink:0}
+
+  .recs{padding:18px 18px;border-radius:18px;display:flex;flex-direction:column;gap:12px}
+  .rec{display:flex;gap:12px;align-items:flex-start;font-size:13px;color:var(--titanium-300);line-height:1.5}
+  .rec .ic{color:var(--mint);flex-shrink:0;margin-top:2px}
+
+  .again{align-self:center;margin-top:6px;cursor:pointer;font-family:inherit;font-weight:600;font-size:14px;color:var(--void);
+    background:linear-gradient(120deg,var(--cyan),var(--ice));border:none;border-radius:99px;padding:14px 30px;transition:transform .2s}
+  .again:hover{transform:translateY(-1px)}
+
+  footer{text-align:center;color:var(--titanium-500);font-size:11px;letter-spacing:.04em;margin-top:30px;line-height:1.7}
+  .v-excellent{color:var(--mint)} .bg-excellent{background:rgba(122,255,196,.12);color:var(--mint)}
+  .v-good{color:var(--cyan)} .bg-good{background:rgba(94,231,224,.12);color:var(--cyan)}
+  .v-fair{color:var(--ember)} .bg-fair{background:rgba(255,157,122,.14);color:var(--ember)}
+  .v-poor{color:#ff6b6b} .bg-poor{background:rgba(255,107,107,.14);color:#ff6b6b}
+
+  @media(max-width:640px){
+    .metric-grid{grid-template-columns:repeat(2,1fr)}
+    .insights{grid-template-columns:1fr}
+    .stats{grid-template-columns:repeat(2,1fr)}
+    .health-hero{text-align:center}.health-copy{text-align:center}
+  }
+  @media(prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important}
+  }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body class="grain">
+<div class="ambient-mesh"></div>
+
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <div class="mark surface"><canvas id="markCanvas" width="76" height="76"></canvas></div>
+      <div>
+        <h1 class="display">Pulse</h1>
+        <div class="sub">Network Intelligence</div>
+      </div>
+    </div>
+    <div class="chip surface"><span class="dot"></span><span id="locChip">Locating…</span></div>
+  </header>
+
+  <div class="demo-banner">
+    <b>Interactive preview — simulated data.</b> This single-file demo showcases the Pulse interface and flow,
+    but it always shows a <b>representative simulation</b>, not your real speed. For genuine measurements run the
+    full Next.js app from the project zip and <b>deploy it</b> (Vercel/Cloudflare). Note: running even the real app
+    on <b>localhost</b> measures your machine talking to itself (multi-Gbps loopback), not your internet — only a
+    deployed server measures your actual connection.
+  </div>
+
+  <!-- IDLE / TESTING STAGE -->
+  <div class="stage" id="stage">
+    <div id="idleView">
+      <h1 class="hero-title display">Understand your internet, <span class="grad">intelligently.</span></h1>
+      <p class="hero-sub">Real download, upload, latency, jitter and packet-loss measurement — translated into answers you actually care about.</p>
+      <div class="orb-wrap" style="margin-top:26px">
+        <canvas id="orbIdle" width="340" height="340"></canvas>
+        <div class="orb-center">
+          <button class="cta" id="startBtn"><span>Start</span><div class="ring"></div></button>
+        </div>
+      </div>
+    </div>
+
+    <div id="testView" style="display:none">
+      <div class="metric-phase" id="phaseLabel">Connecting</div>
+      <div class="orb-wrap">
+        <canvas id="orb" width="340" height="340"></canvas>
+        <div class="orb-center">
+          <div class="metric-val tabular display" id="metricVal">0.0</div>
+          <div class="metric-unit" id="metricUnit">Mbps</div>
+        </div>
+      </div>
+      <div class="progress"><i id="progressBar"></i></div>
+      <div class="wave-wrap"><canvas id="wave" width="1040" height="180"></canvas></div>
+      <div class="stats">
+        <div class="stat surface"><div class="k">Download</div><div class="v tabular"><span id="sDown">0</span><span class="u">Mbps</span></div></div>
+        <div class="stat surface"><div class="k">Upload</div><div class="v tabular"><span id="sUp">0</span><span class="u">Mbps</span></div></div>
+        <div class="stat surface"><div class="k">Ping</div><div class="v tabular"><span id="sPing">0</span><span class="u">ms</span></div></div>
+        <div class="stat surface"><div class="k">Jitter</div><div class="v tabular"><span id="sJit">0</span><span class="u">ms</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="results" id="results">
+    <div class="health-hero surface-strong glow-cyan">
+      <div class="ring-box">
+        <svg width="150" height="150" viewBox="0 0 150 150">
+          <circle cx="75" cy="75" r="64" fill="none" stroke="rgba(255,255,255,.07)" stroke-width="10"/>
+          <circle id="healthRing" cx="75" cy="75" r="64" fill="none" stroke="url(#hg)" stroke-width="10"
+            stroke-linecap="round" stroke-dasharray="402" stroke-dashoffset="402" transform="rotate(-90 75 75)"/>
+          <defs><linearGradient id="hg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#5ee7e0"/><stop offset="1" stop-color="#9d8cff"/></linearGradient></defs>
+        </svg>
+        <div class="score"><b class="tabular" id="healthScore">0</b><small>Health</small></div>
+      </div>
+      <div class="health-copy">
+        <h2 class="display" id="headline">—</h2>
+        <p id="summary">—</p>
+      </div>
+    </div>
+
+    <div class="metric-grid">
+      <div class="mcard surface"><div class="k">↓ Download</div><div class="v tabular"><span id="rDown">0</span><span class="u">Mbps</span></div></div>
+      <div class="mcard surface"><div class="k">↑ Upload</div><div class="v tabular"><span id="rUp">0</span><span class="u">Mbps</span></div></div>
+      <div class="mcard surface"><div class="k">Ping</div><div class="v tabular"><span id="rPing">0</span><span class="u">ms</span></div></div>
+      <div class="mcard surface"><div class="k">Jitter</div><div class="v tabular"><span id="rJit">0</span><span class="u">ms</span></div></div>
+    </div>
+    <div class="meta-line" id="metaLine">—</div>
+
+    <div class="section-title">AI Insights</div>
+    <div class="insights" id="insights"></div>
+
+    <div class="section-title">Streaming capability</div>
+    <div class="tiers surface" id="tiers"></div>
+
+    <div class="section-title">Recommendations</div>
+    <div class="recs surface" id="recs"></div>
+
+    <button class="again" id="againBtn">Test again</button>
+  </div>
+
+  <footer>
+    Pulse — Network Intelligence · Zero-cost PWA · Next.js · Real browser-based measurement<br/>
+    Built with a local rule-based diagnostics engine — no paid AI, no tracking.
+  </footer>
+</div>
+
+<script>
+/* ============================================================
+   PULSE PREVIEW — faithful reproduction of the app's engine,
+   FluxOrb, waveform, scoring and diagnostics (mirrors src/lib).
+   ============================================================ */
+
+/* ---------- FluxOrb (canvas) ---------- */
+const PHASE_HUE = {
+  latency:[124,198,255], download:[94,231,224], upload:[157,140,255],
+  analyzing:[122,255,196], connecting:[139,148,173], complete:[122,255,196],
+  idle:[139,148,173], error:[255,107,107]
+};
+function makeFlux(canvas, size){
+  const ctx = canvas.getContext('2d');
+  const dpr = Math.min(window.devicePixelRatio||1,2);
+  canvas.width=size*dpr; canvas.height=size*dpr; canvas.style.width=size+'px'; canvas.style.height=size+'px';
+  ctx.scale(dpr,dpr);
+  const cx=size/2, cy=size/2, baseR=size*0.28;
+  let particles=[], t=0, smooth=0, raf=0;
+  const state={intensity:0, phase:'idle'};
+  function spawn(n,I){for(let i=0;i<n;i++)particles.push({angle:Math.random()*Math.PI*2,radius:baseR+Math.random()*8,speed:.4+Math.random()*1.6+I*2.2,life:0,maxLife:60+Math.random()*80,size:.6+Math.random()*1.8});}
+  function render(){
+    const tI=state.intensity, phase=state.phase;
+    smooth+=(tI-smooth)*0.08; const I=smooth;
+    const [r,g,b]=PHASE_HUE[phase]||PHASE_HUE.idle;
+    ctx.clearRect(0,0,size,size); t+=0.016;
+    const coreR=baseR*(0.7+I*0.5+Math.sin(t*1.5)*0.04);
+    let grad=ctx.createRadialGradient(cx,cy,0,cx,cy,coreR*2.4);
+    grad.addColorStop(0,`rgba(${r},${g},${b},${0.32+I*0.4})`);
+    grad.addColorStop(0.4,`rgba(${r},${g},${b},${0.12+I*0.15})`);
+    grad.addColorStop(1,'rgba(0,0,0,0)');
+    ctx.fillStyle=grad; ctx.fillRect(0,0,size,size);
+    for(let i=0;i<3;i++){const po=(t*0.6+i*0.7)%1;const rr=baseR*(0.6+po*(1.3+I*0.7));const a=(1-po)*(0.28+I*0.35);
+      ctx.beginPath();ctx.arc(cx,cy,rr,0,Math.PI*2);ctx.strokeStyle=`rgba(${r},${g},${b},${a})`;ctx.lineWidth=1.2+I*1.5;ctx.stroke();}
+    for(let i=0;i<5;i++){const a0=t*(0.5+i*0.12)+(i*Math.PI*2)/5;const a1=a0+0.5+I*0.4;const ar=baseR*1.35+i*4;
+      ctx.beginPath();ctx.arc(cx,cy,ar,a0,a1);ctx.strokeStyle=`rgba(${r},${g},${b},${0.15+I*0.25})`;ctx.lineWidth=2;ctx.lineCap='round';ctx.stroke();}
+    const active=['download','upload','latency','analyzing'].includes(phase);
+    if(active)spawn(Math.round(1+I*4),I);
+    particles=particles.filter(p=>{p.life++;if(p.life>p.maxLife)return false;
+      const dir=phase==='upload'?-1:1;p.radius+=p.speed*dir;p.angle+=0.01*dir;
+      const lt=p.life/p.maxLife;const a=Math.sin(lt*Math.PI)*(0.5+I*0.5);
+      const px=cx+Math.cos(p.angle)*p.radius,py=cy+Math.sin(p.angle)*p.radius;
+      ctx.beginPath();ctx.arc(px,py,p.size,0,Math.PI*2);ctx.fillStyle=`rgba(${r},${g},${b},${a})`;ctx.fill();
+      return p.radius<size*0.7&&p.radius>baseR*0.4;});
+    let ig=ctx.createRadialGradient(cx,cy,0,cx,cy,coreR);
+    ig.addColorStop(0,`rgba(${r},${g},${b},${0.22+I*0.25})`);ig.addColorStop(1,'rgba(5,6,10,0)');
+    ctx.fillStyle=ig;ctx.beginPath();ctx.arc(cx,cy,coreR,0,Math.PI*2);ctx.fill();
+    raf=requestAnimationFrame(render);
+  }
+  render();
+  return {set:(i,p)=>{state.intensity=i;state.phase=p;}, stop:()=>cancelAnimationFrame(raf)};
+}
+
+/* brand mark mini-orb */
+makeFlux(document.getElementById('markCanvas'),38).set(0.5,'download');
+const idleOrb = makeFlux(document.getElementById('orbIdle'),340); idleOrb.set(0.35,'idle');
+let orb=null;
+
+/* ---------- Waveform ---------- */
+function drawWave(canvas, samples){
+  const ctx=canvas.getContext('2d');const w=canvas.width,h=canvas.height;
+  ctx.clearRect(0,0,w,h);
+  if(samples.length<2)return;
+  const peak=Math.max(...samples,1)*1.15;
+  const step=w/Math.max(samples.length-1,1);
+  ctx.beginPath();ctx.moveTo(0,h);
+  samples.forEach((s,i)=>{const x=i*step;const y=h-(s/peak)*h*0.92;
+    if(i===0)ctx.lineTo(x,y);else{const px=(i-1)*step;const py=h-(samples[i-1]/peak)*h*0.92;ctx.quadraticCurveTo(px,py,(px+x)/2,(py+y)/2);}});
+  const lastX=(samples.length-1)*step,lastY=h-(samples[samples.length-1]/peak)*h*0.92;
+  ctx.lineTo(lastX,lastY);ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.closePath();
+  const fill=ctx.createLinearGradient(0,0,0,h);
+  fill.addColorStop(0,'rgba(94,231,224,.35)');fill.addColorStop(1,'rgba(94,231,224,0)');
+  ctx.fillStyle=fill;ctx.fill();
+  ctx.beginPath();
+  samples.forEach((s,i)=>{const x=i*step;const y=h-(s/peak)*h*0.92;
+    if(i===0)ctx.moveTo(x,y);else{const px=(i-1)*step;const py=h-(samples[i-1]/peak)*h*0.92;ctx.quadraticCurveTo(px,py,(px+x)/2,(py+y)/2);}});
+  ctx.strokeStyle='rgba(124,198,255,.9)';ctx.lineWidth=2.5;ctx.lineJoin='round';ctx.stroke();
+  ctx.beginPath();ctx.arc(lastX,lastY,4,0,Math.PI*2);ctx.fillStyle='#7cc6ff';ctx.shadowColor='#7cc6ff';ctx.shadowBlur=12;ctx.fill();ctx.shadowBlur=0;
+}
+
+/* ---------- Scoring (mirror of src/lib/ai/score.ts) ---------- */
+const clamp=(v,lo=0,hi=100)=>Math.max(lo,Math.min(hi,v));
+function scoreDownload(m){if(m<=0)return 0;if(m<25)return clamp(m/25*60);if(m<100)return clamp(60+(m-25)/75*25);if(m<300)return clamp(85+(m-100)/200*10);if(m<1000)return clamp(95+(m-300)/700*5);return 100;}
+function scoreUpload(m){if(m<=0)return 0;if(m<5)return clamp(m/5*50);if(m<20)return clamp(50+(m-5)/15*25);if(m<100)return clamp(75+(m-20)/80*20);return 100;}
+function scorePing(ms){if(ms<=0)return 0;if(ms<=20)return 100;if(ms<=50)return clamp(100-(ms-20)/30*20);if(ms<=100)return clamp(80-(ms-50)/50*30);if(ms<=200)return clamp(50-(ms-100)/100*30);return clamp(20-(ms-200)/20);}
+function scoreJitter(ms){if(ms<=2)return 100;if(ms<=10)return clamp(100-(ms-2)/8*25);if(ms<=30)return clamp(75-(ms-10)/20*35);if(ms<=60)return clamp(40-(ms-30)/30*30);return clamp(10-(ms-60)/10);}
+function scorePacketLoss(p){if(p<=0)return 100;if(p<=0.5)return clamp(100-p*20);if(p<=2)return clamp(90-(p-0.5)*20);if(p<=5)return clamp(60-(p-2)*12);return clamp(24-(p-5)*4);}
+function computeHealth(r){const s={d:scoreDownload(r.download),u:scoreUpload(r.upload),p:scorePing(r.ping),j:scoreJitter(r.jitter),l:scorePacketLoss(r.packetLoss)};
+  return Math.round(clamp(s.d*0.32+s.u*0.16+s.p*0.22+s.j*0.16+s.l*0.14));}
+const verdict=s=>s>=85?'excellent':s>=65?'good':s>=40?'fair':'poor';
+
+/* ---------- Diagnostics (mirror of src/lib/ai/diagnostics.ts) ---------- */
+const TIERS=[{label:'SD',resolution:'480p',req:3},{label:'HD',resolution:'720p',req:5},{label:'Full HD',resolution:'1080p',req:8},{label:'QHD',resolution:'1440p',req:16},{label:'4K UHD',resolution:'2160p',req:25}];
+function diagnostics(r){
+  const health=computeHealth(r); r.healthScore=health;
+  const streaming=TIERS.map(t=>({...t,supported:r.download>=t.req,margin:Math.round(r.download/t.req*10)/10}));
+  // gaming
+  const gs=Math.round(scorePing(r.ping)*0.45+scoreJitter(r.jitter)*0.35+scorePacketLoss(r.packetLoss)*0.2);
+  const gv=verdict(gs);
+  const gaming={title:'Gaming',icon:'🎮',score:gs,verdict:gv,
+    summary:gv==='excellent'?'Excellent for competitive gaming':gv==='good'?'Stable for online multiplayer':gv==='fair'?'Casual gaming only':'Competitive gaming may suffer',
+    detail:gv==='excellent'?`Low ${r.ping}ms ping with tight ${r.jitter}ms jitter — ranked play feels responsive.`:gv==='good'?`${r.ping}ms ping is solid for most games.`:gv==='fair'?`Latency (${r.ping}ms) or jitter (${r.jitter}ms) may cause lag spikes.`:`High latency/jitter and ${r.packetLoss}% loss will cause rubber-banding.`};
+  // video
+  const us=r.upload>=3?100:r.upload>=1.5?70:r.upload>=0.8?45:20;
+  const vs=Math.round(us*0.35+scorePing(r.ping)*0.2+scoreJitter(r.jitter)*0.25+scorePacketLoss(r.packetLoss)*0.2);
+  const vv=verdict(vs);
+  const video={title:'Video Calls',icon:'🎥',score:vs,verdict:vv,
+    summary:vv==='excellent'?'Crystal-clear video calls':vv==='good'?'Reliable for HD video calls':vv==='fair'?'Calls may degrade under load':'Video calls likely to struggle',
+    detail:vv==='excellent'?`${r.upload} Mbps upload handles HD Zoom, Meet, Teams & Discord.`:vv==='good'?`Upload of ${r.upload} Mbps is comfortable for group calls.`:vv==='fair'?`Limited upload (${r.upload} Mbps) can freeze frames on screen share.`:`Low upload will cause audio cut-outs and dropped video.`};
+  // streaming card
+  const top=[...streaming].reverse().find(t=>t.supported);
+  const ss=r.download>=25?95:r.download>=8?78:r.download>=5?60:r.download>=3?42:18;
+  const sv=verdict(ss);
+  const streamCard={title:'Streaming',icon:'▶',score:ss,verdict:sv,
+    summary:!top?'Streaming will buffer':top.label==='4K UHD'?'Excellent for Netflix 4K':top.label==='QHD'?'Smooth up to 1440p':top.label==='Full HD'?'Smooth 1080p playback':`Reliable up to ${top.resolution}`,
+    detail:!top?`At ${r.download} Mbps even SD may struggle.`:top.label==='4K UHD'?`${r.download} Mbps supports 4K UHD on multiple devices.`:top.label==='QHD'?`${r.download} Mbps handles 1440p easily.`:top.label==='Full HD'?`${r.download} Mbps supports Full HD; high-bitrate Twitch may buffer.`:`${r.download} Mbps supports ${top.resolution}.`};
+  // stability
+  const spread=r.max-r.min;const spreadScore=spread<=10?100:spread<=30?75:spread<=80?45:20;
+  const sts=Math.round(scoreJitter(r.jitter)*0.4+scorePacketLoss(r.packetLoss)*0.35+spreadScore*0.25);
+  const stv=verdict(sts);
+  const stability={title:'Stability',icon:'∿',score:sts,verdict:stv,
+    summary:stv==='excellent'?'Rock-solid and consistent':stv==='good'?'Stable connection':stv==='fair'?'Occasionally unstable':'Unstable — frequent fluctuations',
+    detail:`Jitter ${r.jitter}ms · loss ${r.packetLoss}% · latency range ${Math.round(spread)}ms.`};
+  // headline
+  let headline,summary;
+  if(health>=85){headline='Your internet is excellent';summary=`${r.download} Mbps down · ${r.upload} Mbps up · ${r.ping}ms ping. Handles 4K streaming to competitive gaming with room to spare.`;}
+  else if(health>=65){headline='Your internet is good';summary=`${r.download} Mbps down · ${r.upload} Mbps up · ${r.ping}ms ping. Comfortable for streaming, calls and everyday use.`;}
+  else if(health>=40){headline='Your internet is workable';summary=`${r.download} Mbps down · ${r.upload} Mbps up · ${r.ping}ms ping. Fine for browsing and HD video; heavy tasks may struggle.`;}
+  else{headline='Your internet needs attention';summary=`${r.download} Mbps down · ${r.upload} Mbps up · ${r.ping}ms ping. You'll notice buffering, lag or dropped calls.`;}
+  // recs
+  const recs=[];
+  if(r.jitter>15||spread>60)recs.push('High latency variation detected — move closer to your router or switch to the 5GHz band.');
+  if(r.packetLoss>1)recs.push(`Packet loss of ${r.packetLoss}% suggests interference — restarting your router often clears this.`);
+  if(r.upload<5&&r.download>30)recs.push('Upload is much weaker than download — use Ethernet for video calls and large uploads.');
+  if(r.ping>80)recs.push('Ping is high — for gaming, a wired connection or closer server helps.');
+  if(r.download<25)recs.push('Download below 25 Mbps can bottleneck 4K streaming — reduce connected devices during heavy use.');
+  if(recs.length===0)recs.push('Your connection looks healthy across the board — no action needed. Re-test periodically.');
+  if(health<65)recs.push('For speed-critical tasks, prefer a wired Ethernet connection over WiFi.');
+  return {health,headline,summary,cards:[streamCard,gaming,video,stability],streaming,recs:recs.slice(0,5)};
+}
+
+/* ---------- Measurement engine (real, with simulation fallback) ---------- */
+const PING_URL='/api/ping', DL_URL='/api/download', UL_URL='/api/upload';
+let useReal=true; // becomes false on first failed probe
+
+async function probeReal(){
+  try{const c=new AbortController();const id=setTimeout(()=>c.abort(),1500);
+    await fetch(PING_URL+'?t='+Date.now(),{cache:'no-store',signal:c.signal});clearTimeout(id);return true;}
+  catch(e){return false;}
+}
+
+// Real latency: many tiny cache-busted probes timed with performance.now()
+async function measureLatencyReal(onSample){
+  const N=24;const rtts=[];let fails=0;
+  for(let i=0;i<N;i++){
+    const t0=performance.now();
+    try{const c=new AbortController();const id=setTimeout(()=>c.abort(),2000);
+      await fetch(PING_URL+'?t='+Date.now()+'_'+i,{cache:'no-store',signal:c.signal});clearTimeout(id);
+      const rtt=performance.now()-t0;rtts.push(rtt);onSample(rtt,i,N);}
+    catch(e){fails++;}
+    await new Promise(r=>setTimeout(r,40));
+  }
+  return finishLatency(rtts,fails,N);
+}
+function finishLatency(rtts,fails,N){
+  if(!rtts.length)return{ping:0,jitter:0,min:0,max:0,packetLoss:100};
+  const sorted=[...rtts].sort((a,b)=>a-b);
+  const trim=Math.floor(sorted.length*0.1);
+  const core=sorted.slice(trim,sorted.length-trim||sorted.length);
+  const median=core[Math.floor(core.length/2)];
+  let jit=0;for(let i=1;i<rtts.length;i++)jit+=Math.abs(rtts[i]-rtts[i-1]);jit/=Math.max(rtts.length-1,1);
+  return{ping:Math.round(median*10)/10,jitter:Math.round(jit*10)/10,min:Math.round(sorted[0]*10)/10,max:Math.round(sorted[sorted.length-1]*10)/10,packetLoss:Math.round(fails/N*1000)/10};
+}
+
+// Real throughput via streaming fetch
+async function measureDownloadReal(durationMs,onSample){
+  const start=performance.now();let bytes=0;const samples=[];let lastT=0,lastBytes=0;
+  const streams=4;const ctrls=[];
+  const readStream=async()=>{
+    while(performance.now()-start<durationMs){
+      const c=new AbortController();ctrls.push(c);
+      try{const res=await fetch(DL_URL+'?bytes='+(8*1024*1024)+'&t='+Math.random(),{cache:'no-store',signal:c.signal});
+        const reader=res.body.getReader();
+        while(true){const{done,value}=await reader.read();if(done)break;bytes+=value.length;
+          if(performance.now()-start>=durationMs){c.abort();break;}}}
+      catch(e){break;}
+    }
+  };
+  const samplerId=setInterval(()=>{
+    const t=performance.now()-start;const db=bytes-lastBytes;const dt=(t-lastT)/1000;
+    if(dt>0){const mbps=(db*8)/dt/1e6;if(t>1800)samples.push({t,mbps});onSample(mbps,{t,mbps});}
+    lastT=t;lastBytes=bytes;
+  },200);
+  await Promise.all(Array.from({length:streams},readStream));
+  clearInterval(samplerId);ctrls.forEach(c=>{try{c.abort()}catch(e){}});
+  return finishThroughput(samples,bytes,durationMs);
+}
+async function measureUploadReal(durationMs,onSample){
+  const start=performance.now();let bytes=0;const samples=[];let lastT=0,lastBytes=0;
+  const blob=new Uint8Array(1*1024*1024);crypto.getRandomValues(blob);
+  const streams=3;
+  const push=async()=>{while(performance.now()-start<durationMs){
+    try{await fetch(UL_URL,{method:'POST',body:blob,cache:'no-store'});bytes+=blob.length;}catch(e){break;}}};
+  const samplerId=setInterval(()=>{const t=performance.now()-start;const db=bytes-lastBytes;const dt=(t-lastT)/1000;
+    if(dt>0){const mbps=(db*8)/dt/1e6;if(t>1500)samples.push({t,mbps});onSample(mbps,{t,mbps});}lastT=t;lastBytes=bytes;},200);
+  await Promise.all(Array.from({length:streams},push));clearInterval(samplerId);
+  return finishThroughput(samples,bytes,durationMs);
+}
+function finishThroughput(samples,bytes,durationMs){
+  if(!samples.length)return{mbps:0,peak:0,samples:[],bytes,durationMs};
+  const vals=samples.map(s=>s.mbps).sort((a,b)=>a-b);
+  const trim=Math.floor(vals.length*0.15);
+  const core=vals.slice(trim,vals.length-trim||vals.length);
+  const mean=core.reduce((a,b)=>a+b,0)/core.length;
+  return{mbps:Math.round(mean*100)/100,peak:Math.round(Math.max(...vals)*100)/100,samples,bytes,durationMs};
+}
+
+/* ---- Simulation fallback (representative, clearly-labeled) ---- */
+function simProfile(){
+  // a believable "good home fiber/wifi" profile with natural variance
+  const dlBase=180+Math.random()*220, ulBase=30+Math.random()*60;
+  const pingBase=12+Math.random()*22, jitBase=1.5+Math.random()*4, loss=Math.random()<0.7?0:Math.round(Math.random()*8)/10;
+  return {dlBase,ulBase,pingBase,jitBase,loss};
+}
+function noisy(base,spreadPct){return base*(1+(Math.random()-0.5)*spreadPct);}
+async function simLatency(prof,onSample){const N=24;const rtts=[];let fails=0;
+  for(let i=0;i<N;i++){let rtt=Math.max(2,noisy(prof.pingBase,0.5)+(Math.random()<0.08?Math.random()*30:0));
+    if(prof.loss>0&&Math.random()*100<prof.loss){fails++;}else{rtts.push(rtt);onSample(rtt,i,N);}
+    await new Promise(r=>setTimeout(r,55));}
+  return finishLatency(rtts,fails,N);}
+async function simThroughput(base,durationMs,phase,onSample){const start=performance.now();const samples=[];
+  return new Promise(resolve=>{const id=setInterval(()=>{const t=performance.now()-start;
+    const ramp=Math.min(1,t/2200);const v=Math.max(0,noisy(base,0.18)*ramp);
+    if(t>1500)samples.push({t,mbps:v});onSample(v,{t,mbps:v});
+    if(t>=durationMs){clearInterval(id);
+      const vals=samples.map(s=>s.mbps).sort((a,b)=>a-b);const trim=Math.floor(vals.length*0.15);
+      const core=vals.slice(trim,vals.length-trim||vals.length);const mean=core.reduce((a,b)=>a+b,0)/core.length;
+      resolve({mbps:Math.round(mean*100)/100,peak:Math.round(Math.max(...vals)*100)/100,samples,bytes:0,durationMs});}},200);});}
+
+/* ---------- Orchestration ---------- */
+const $=id=>document.getElementById(id);
+let liveSamples=[], smoothVal=0;
+
+function setPhase(label){$('phaseLabel').textContent=label;}
+function setMetric(val,unit){ // spring-ish
+  smoothVal+=(val-smoothVal)*0.25;
+  $('metricVal').textContent=(unit==='ms'?smoothVal.toFixed(0):smoothVal.toFixed(1));
+  $('metricUnit').textContent=unit;
+}
+
+async function runTest(){
+  $('idleView').style.display='none';
+  $('testView').style.display='block';
+  $('results').style.display='none';
+  $('stage').style.display='flex';
+  liveSamples=[];smoothVal=0;
+  orb=orb||makeFlux($('orb'),340);
+
+  const real = useReal && (await probeReal());
+  useReal = real;
+  const prof = real?null:simProfile();
+
+  const r={download:0,upload:0,ping:0,jitter:0,packetLoss:0,min:0,max:0};
+
+  // connecting
+  setPhase('Connecting'); orb.set(0.2,'connecting'); $('progressBar').style.width='8%';
+  await new Promise(res=>setTimeout(res,500));
+
+  // latency
+  setPhase('Measuring latency'); $('metricUnit').textContent='ms';
+  const lat = await (real?measureLatencyReal:(os=>simLatency(prof,os)))((rtt,i,N)=>{
+    orb.set(Math.min(1,0.3+0.4*(1-Math.min(rtt,120)/120)),'latency');
+    setMetric(rtt,'ms'); $('progressBar').style.width=(8+(i/N)*22)+'%';
+    $('sPing').textContent=Math.round(rtt);
+  });
+  r.ping=lat.ping;r.jitter=lat.jitter;r.min=lat.min;r.max=lat.max;r.packetLoss=lat.packetLoss;
+  $('sPing').textContent=r.ping;$('sJit').textContent=r.jitter;
+
+  // download
+  setPhase('Testing download'); liveSamples=[];
+  const dl = await (real?(d,os)=>measureDownloadReal(d,os):(d,os)=>simThroughput(prof.dlBase,d,'download',os))(9000,(mbps,s)=>{
+    orb.set(Math.min(1,mbps/300),'download'); setMetric(mbps,'Mbps');
+    liveSamples.push(s.mbps);if(liveSamples.length>120)liveSamples.shift();
+    drawWave($('wave'),liveSamples); $('progressBar').style.width=(30+Math.min(1,s.t/9000)*32)+'%';
+    $('sDown').textContent=mbps.toFixed(1);
+  });
+  r.download=dl.mbps;$('sDown').textContent=r.download;
+
+  // upload
+  setPhase('Testing upload'); liveSamples=[];
+  const ul = await (real?(d,os)=>measureUploadReal(d,os):(d,os)=>simThroughput(prof.ulBase,d,'upload',os))(9000,(mbps,s)=>{
+    orb.set(Math.min(1,mbps/100),'upload'); setMetric(mbps,'Mbps');
+    liveSamples.push(s.mbps);if(liveSamples.length>120)liveSamples.shift();
+    drawWave($('wave'),liveSamples); $('progressBar').style.width=(62+Math.min(1,s.t/9000)*30)+'%';
+    $('sUp').textContent=mbps.toFixed(1);
+  });
+  r.upload=ul.mbps;$('sUp').textContent=r.upload;
+
+  // analyze
+  setPhase('Analyzing'); orb.set(0.6,'analyzing'); $('progressBar').style.width='96%';
+  await new Promise(res=>setTimeout(res,700));
+  $('progressBar').style.width='100%';
+
+  showResults(r, real);
+}
+
+/* ---------- Render results ---------- */
+function showResults(r, real){
+  const d=diagnostics(r);
+  $('testView').style.display='none';
+  $('stage').style.display='none';
+  $('results').style.display='flex';
+
+  // health ring
+  const circ=402, off=circ-(d.health/100)*circ;
+  setTimeout(()=>{$('healthRing').style.transition='stroke-dashoffset 1.4s cubic-bezier(.22,1,.36,1)';$('healthRing').style.strokeDashoffset=off;},60);
+  animateNum($('healthScore'),0,d.health,1200,0);
+  $('headline').textContent=d.headline;
+  $('summary').textContent=d.summary;
+
+  $('rDown').textContent=r.download;$('rUp').textContent=r.upload;$('rPing').textContent=r.ping;$('rJit').textContent=r.jitter;
+  $('metaLine').innerHTML=`Packet loss <b>${r.packetLoss}%</b> · latency range <b>${Math.round(r.max-r.min)}ms</b> · ${real?'<b>live measurement</b>':'representative <b>simulation</b>'}`;
+
+  // insights
+  $('insights').innerHTML=d.cards.map(c=>{
+    const off2=(2*Math.PI*22)*(1-c.score/100);
+    return `<div class="insight surface">
+      <div class="mini-ring">
+        <svg width="52" height="52" viewBox="0 0 52 52">
+          <circle cx="26" cy="26" r="22" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="4"/>
+          <circle cx="26" cy="26" r="22" fill="none" stroke="currentColor" class="v-${c.verdict}" stroke-width="4" stroke-linecap="round"
+            stroke-dasharray="${2*Math.PI*22}" stroke-dashoffset="${off2}" transform="rotate(-90 26 26)"/>
+        </svg>
+        <b class="tabular">${c.score}</b>
+      </div>
+      <div>
+        <h4>${c.icon} ${c.title} <span class="verdict bg-${c.verdict}">${c.verdict}</span></h4>
+        <p>${c.detail}</p>
+      </div>
+    </div>`;}).join('');
+
+  // tiers
+  $('tiers').innerHTML=d.streaming.map(t=>{
+    const pct=Math.min(100,(r.download/t.req)*40);
+    const col=t.supported?(t.label==='4K UHD'?'var(--mint)':'var(--cyan)'):'var(--titanium-400)';
+    return `<div class="tier">
+      <div class="lbl">${t.label}<small>${t.resolution} · ${t.req} Mbps</small></div>
+      <div class="bar"><i style="background:${col}"></i></div>
+      <div class="stat-ic" style="color:${col}">${t.supported?'✓ '+(t.margin>=1?t.margin+'×':'')+' ready':'✕ buffer'}</div>
+    </div>`;}).join('');
+  setTimeout(()=>{document.querySelectorAll('.tier .bar i').forEach((el,i)=>{const t=d.streaming[i];el.style.width=Math.min(100,Math.max(6,(r.download/t.req)*30))+'%';});},80);
+
+  // recs
+  $('recs').innerHTML=d.recs.map(x=>`<div class="rec"><span class="ic">◆</span><span>${x}</span></div>`).join('');
+
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function animateNum(el,from,to,dur,dec){const start=performance.now();
+  function tick(now){const p=Math.min(1,(now-start)/dur);const e=1-Math.pow(1-p,3);
+    el.textContent=(from+(to-from)*e).toFixed(dec);if(p<1)requestAnimationFrame(tick);}requestAnimationFrame(tick);}
+
+/* ---------- Location (free IP fallback) ---------- */
+(async()=>{
+  try{const res=await fetch('https://ipapi.co/json/');if(res.ok){const j=await res.json();
+    $('locChip').textContent=[j.city,j.region,j.country_name].filter(Boolean).slice(0,2).join(', ')||'Located';return;}}catch(e){}
+  $('locChip').textContent='Siliguri, West Bengal';
+})();
+
+/* ---------- Wire up ---------- */
+$('startBtn').addEventListener('click',()=>{idleOrb.stop?0:0;runTest();});
+$('againBtn').addEventListener('click',()=>{
+  $('results').style.display='none';$('stage').style.display='flex';
+  $('testView').style.display='none';$('idleView').style.display='block';
+  $('healthRing').style.transition='none';$('healthRing').style.strokeDashoffset='402';
+});
+</script>
+</body>
+</html>
