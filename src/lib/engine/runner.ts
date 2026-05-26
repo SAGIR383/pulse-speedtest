@@ -26,6 +26,7 @@ export interface ClientRunOptions {
   server: ServerInfo;
   location: LocationInfo | null;
   isp: string | null;
+  backend?: 'origin' | 'cloudflare';
   onState: (state: LiveState) => void;
 }
 
@@ -94,6 +95,7 @@ export function runSpeedTestClient(opts: ClientRunOptions): ClientRunHandle {
           server: opts.server,
           location: opts.location,
           isp: opts.isp,
+          backend: opts.backend,
         },
       });
 
@@ -118,6 +120,7 @@ export function runSpeedTestClient(opts: ClientRunOptions): ClientRunHandle {
     server: opts.server,
     location: opts.location,
     isp: opts.isp,
+    backend: opts.backend,
     signal: controller.signal,
     onState: opts.onState,
   });

@@ -21,6 +21,52 @@ export default function EnvBanner() {
 
   if (!env || dismissed) return null;
 
+  // When using the Cloudflare measurement backend, results reflect the real
+  // path to Cloudflare's network regardless of where the app is hosted — so
+  // the loopback/localhost concern no longer applies.
+  const usingCloudflare =
+    process.env.NEXT_PUBLIC_MEASUREMENT_BACKEND !== 'origin';
+
+  if (usingCloudflare) {
+    // Show a brief, dismissible info note about the measurement source.
+    return (
+      <AnimatePresence>
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          className="relative mt-4 rounded-2xl border border-aurora-ice/20 bg-aurora-ice/[0.05] px-4 py-3 sm:px-5 sm:py-4"
+        >
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 flex-shrink-0 text-aurora-ice">
+              <Icon name="globe" size={17} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-titanium-100">
+                Measuring via Cloudflare&apos;s global network
+              </p>
+              <p className="mt-1 text-xs leading-relaxed text-titanium-300">
+                Results reflect your real connection to Cloudflare&apos;s nearest
+                node, similar to dedicated tools. Small differences from other
+                speed tests are normal — they measure to different servers.
+              </p>
+            </div>
+            <button
+              onClick={() => setDismissed(true)}
+              aria-label="Dismiss"
+              className="flex-shrink-0 rounded-full p-1 text-titanium-400 transition-colors hover:text-titanium-100"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+        </motion.div>
+      </AnimatePresence>
+    );
+  }
+
   const isWarning = env.isLoopback;
 
   return (

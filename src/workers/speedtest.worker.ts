@@ -29,6 +29,7 @@ interface StartPayload {
   server: ServerInfo;
   location: LocationInfo | null;
   isp: string | null;
+  backend?: 'origin' | 'cloudflare';
 }
 
 type InboundMessage =
@@ -52,7 +53,7 @@ ctx.addEventListener('message', async (event: MessageEvent<InboundMessage>) => {
     controller?.abort();
     controller = new AbortController();
 
-    const { endpoints, server, location, isp } = msg.payload;
+    const { endpoints, server, location, isp, backend } = msg.payload;
 
     try {
       const result = await runSpeedTest({
@@ -60,6 +61,7 @@ ctx.addEventListener('message', async (event: MessageEvent<InboundMessage>) => {
         server,
         location,
         isp,
+        backend,
         signal: controller.signal,
         onState: (state) => {
           ctx.postMessage({ type: 'state', payload: state });

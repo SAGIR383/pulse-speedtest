@@ -1,6 +1,9 @@
 import { measureLatency } from './latency';
 import { measureDownload } from './download';
 import { measureUpload } from './upload';
+import { measureLatencyCf } from './latency-cf';
+import { measureDownloadCf } from './download-cf';
+import { measureUploadCf } from './upload-cf';
 import { computeHealthScore } from '../ai/score';
 import type {
   LiveState,
@@ -16,6 +19,14 @@ import type {
  * the real network activity.
  */
 
+/**
+ * Which measurement backend to use:
+ *  - 'origin'     → our own Next.js API routes (measures path to our CDN edge).
+ *  - 'cloudflare' → speed.cloudflare.com endpoints (measures path to Cloudflare's
+ *                   nearest node; closer to real ISP throughput, à la Ookla).
+ */
+export type MeasurementBackend = 'origin' | 'cloudflare';
+
 export interface EngineEndpoints {
   ping: string;
   download: string;
@@ -29,6 +40,8 @@ export interface RunOptions {
   isp: string | null;
   onState: (state: LiveState) => void;
   signal?: AbortSignal;
+  /** Measurement backend; defaults to 'cloudflare' for ISP-accurate results. */
+  backend?: MeasurementBackend;
 }
 
 const blankState = (): LiveState => ({
@@ -45,6 +58,7 @@ const blankState = (): LiveState => ({
 });
 
 export async function runSpeedTest(opts: RunOptions): Promise<TestResult> {
+  const backend: MeasurementBackend = opts.backend ?? 'cloudflare';
   const state = blankState();
   const emit = () => opts.onState({ ...state, samples: [...state.samples], latencySamples: [...state.latencySamples] });
 
@@ -60,18 +74,23 @@ export async function runSpeedTest(opts: RunOptions): Promise<TestResult> {
   state.latencySamples = [];
   emit();
 
-  const latency = await measureLatency({
-    endpoint: opts.endpoints.ping,
-    samples: 24,
-    signal: opts.signal,
-    onSample: (rtt, index, total) => {
-      state.progress = (index + 1) / total;
-      state.current = rtt;
-      state.ping = Math.round(rtt * 10) / 10;
-      state.latencySamples.push(rtt);
-      emit();
-    },
-  });
+  const onLatencySample = (rtt: number, index: number, total: number) => {
+    state.progress = (index + 1) / total;
+    state.current = rtt;
+    state.ping = Math.round(rtt * 10) / 10;
+    state.latencySamples.push(rtt);
+    emit();
+  };
+
+  const latency =
+    backend === 'cloudflare'
+      ? await measureLatencyCf({ samples: 24, signal: opts.signal, onSample: onLatencySample })
+      : await measureLatency({
+          endpoint: opts.endpoints.ping,
+          samples: 24,
+          signal: opts.signal,
+          onSample: onLatencySample,
+        });
   state.ping = latency.ping;
   state.jitter = latency.jitter;
   state.packetLoss = latency.packetLoss;
@@ -84,19 +103,23 @@ export async function runSpeedTest(opts: RunOptions): Promise<TestResult> {
   state.samples = [];
   emit();
 
-  const dlDuration = 9000;
-  const download = await measureDownload({
-    endpoint: opts.endpoints.download,
-    durationMs: dlDuration,
-    signal: opts.signal,
-    onSample: (mbps, sample: ThroughputSample) => {
-      state.current = mbps;
-      state.download = Math.round(mbps * 100) / 100;
-      state.progress = Math.min(1, sample.t / dlDuration);
-      state.samples.push(sample);
-      emit();
-    },
-  });
+  const dlDuration = backend === 'cloudflare' ? 10000 : 9000;
+  const onDownloadSample = (mbps: number, sample: ThroughputSample) => {
+    state.current = mbps;
+    state.download = Math.round(mbps * 100) / 100;
+    state.progress = Math.min(1, sample.t / dlDuration);
+    state.samples.push(sample);
+    emit();
+  };
+  const download =
+    backend === 'cloudflare'
+      ? await measureDownloadCf({ durationMs: dlDuration, signal: opts.signal, onSample: onDownloadSample })
+      : await measureDownload({
+          endpoint: opts.endpoints.download,
+          durationMs: dlDuration,
+          signal: opts.signal,
+          onSample: onDownloadSample,
+        });
   state.download = download.mbps;
   state.current = download.mbps;
   emit();
@@ -108,19 +131,23 @@ export async function runSpeedTest(opts: RunOptions): Promise<TestResult> {
   state.samples = [];
   emit();
 
-  const ulDuration = 9000;
-  const upload = await measureUpload({
-    endpoint: opts.endpoints.upload,
-    durationMs: ulDuration,
-    signal: opts.signal,
-    onSample: (mbps, sample: ThroughputSample) => {
-      state.current = mbps;
-      state.upload = Math.round(mbps * 100) / 100;
-      state.progress = Math.min(1, sample.t / ulDuration);
-      state.samples.push(sample);
-      emit();
-    },
-  });
+  const ulDuration = backend === 'cloudflare' ? 10000 : 9000;
+  const onUploadSample = (mbps: number, sample: ThroughputSample) => {
+    state.current = mbps;
+    state.upload = Math.round(mbps * 100) / 100;
+    state.progress = Math.min(1, sample.t / ulDuration);
+    state.samples.push(sample);
+    emit();
+  };
+  const upload =
+    backend === 'cloudflare'
+      ? await measureUploadCf({ durationMs: ulDuration, signal: opts.signal, onSample: onUploadSample })
+      : await measureUpload({
+          endpoint: opts.endpoints.upload,
+          durationMs: ulDuration,
+          signal: opts.signal,
+          onSample: onUploadSample,
+        });
   state.upload = upload.mbps;
   state.current = upload.mbps;
   emit();

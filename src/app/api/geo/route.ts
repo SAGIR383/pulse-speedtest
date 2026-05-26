@@ -53,16 +53,37 @@ export async function GET(req: NextRequest) {
   let resolvedRegion = region;
   let resolvedCity = decodedCity;
 
-  // 2) Fallback: server-side IP lookup (no CORS — this is a server call).
-  //    Also used to enrich ISP/ASN which platform headers don't include.
-  if (!Number.isFinite(lat) || !isp) {
+  // 2) Always attempt a server-side IP lookup to fill in ISP/ASN (which the
+  //    platform geo headers don't include) and any missing coordinates.
+  //    Try providers in order until one returns an ISP. No CORS here — these
+  //    are server-to-server calls from the edge.
+  const ip = clientIp(req);
+
+  // Provider A: ipwho.is (keyless). Provider B: ip-api.com (keyless, http).
+  const providers = ip
+    ? [
+        { url: `https://ipwho.is/${ip}`, kind: 'ipwhois' as const },
+        {
+          url: `http://ip-api.com/json/${ip}?fields=status,country,regionName,city,lat,lon,isp,org,as`,
+          kind: 'ipapi' as const,
+        },
+      ]
+    : [
+        { url: `https://ipwho.is/`, kind: 'ipwhois' as const },
+        {
+          url: `http://ip-api.com/json/?fields=status,country,regionName,city,lat,lon,isp,org,as`,
+          kind: 'ipapi' as const,
+        },
+      ];
+
+  for (const p of providers) {
+    if (isp && Number.isFinite(lat)) break; // already have everything
     try {
-      const ip = clientIp(req);
-      // ipwho.is is free, keyless, https, and CORS-irrelevant here.
-      const url = ip ? `https://ipwho.is/${ip}` : 'https://ipwho.is/';
-      const res = await fetch(url, { cache: 'no-store' });
-      if (res.ok) {
-        const d = await res.json();
+      const res = await fetch(p.url, { cache: 'no-store' });
+      if (!res.ok) continue;
+      const d = await res.json();
+
+      if (p.kind === 'ipwhois') {
         if (d && d.success !== false) {
           if (!Number.isFinite(lat) && typeof d.latitude === 'number') {
             lat = d.latitude;
@@ -71,11 +92,22 @@ export async function GET(req: NextRequest) {
           resolvedCity = resolvedCity ?? d.city ?? null;
           resolvedRegion = resolvedRegion ?? d.region ?? null;
           resolvedCountry = resolvedCountry ?? d.country ?? null;
-          isp = d.connection?.isp ?? d.connection?.org ?? d.org ?? null;
+          isp = isp ?? d.connection?.isp ?? d.connection?.org ?? null;
+        }
+      } else {
+        if (d && d.status === 'success') {
+          if (!Number.isFinite(lat) && typeof d.lat === 'number') {
+            lat = d.lat;
+            lng = d.lon;
+          }
+          resolvedCity = resolvedCity ?? d.city ?? null;
+          resolvedRegion = resolvedRegion ?? d.regionName ?? null;
+          resolvedCountry = resolvedCountry ?? d.country ?? null;
+          isp = isp ?? d.isp ?? d.org ?? d.as ?? null;
         }
       }
     } catch {
-      /* fall through with whatever we have */
+      /* try next provider */
     }
   }
 
