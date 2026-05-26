@@ -84,7 +84,7 @@ export default function PlanComparison({ result }: { result: TestResult }) {
         <div className="flex gap-3 mt-5">
           <button
             onClick={commit}
-            className="rounded-full bg-gradient-to-r from-aurora-cyan to-aurora-ice px-5 py-2 text-sm font-medium text-void"
+            className="rounded-full bg-gradient-to-r from-aurora-cyan to-aurora-ice px-5 py-2 text-sm font-medium text-on-accent"
           >
             Save plan
           </button>

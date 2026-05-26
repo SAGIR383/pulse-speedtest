@@ -20,7 +20,7 @@ export default function Header({ view, setView, location, isp }: HeaderProps) {
         <div className="relative h-9 w-9">
           <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-aurora-cyan to-aurora-violet opacity-90 blur-[2px]" />
           <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-aurora-cyan/80 to-aurora-violet/80 flex items-center justify-center">
-            <span className="text-void font-display font-semibold text-lg">P</span>
+            <span className="text-on-accent font-display font-semibold text-lg">P</span>
           </div>
         </div>
         <div className="leading-none">

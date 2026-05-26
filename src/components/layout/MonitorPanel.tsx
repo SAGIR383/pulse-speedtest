@@ -108,7 +108,7 @@ export default function MonitorPanel({
                       onClick={() => update({ intervalMin: min })}
                       className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
                         settings.intervalMin === min
-                          ? 'bg-aurora-cyan text-void font-medium'
+                          ? 'bg-aurora-cyan text-on-accent font-medium'
                           : 'bg-white/[0.05] text-titanium-300 hover:bg-white/10'
                       }`}
                     >

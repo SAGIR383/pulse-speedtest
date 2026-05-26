@@ -15,29 +15,31 @@ const config: Config = {
       colors: {
         // Atmospheric backgrounds
         void: {
-          DEFAULT: '#05060a',
-          50: '#0a0c12',
-          100: '#0d0f17',
-          200: '#11141e',
-          300: '#161a26',
+          DEFAULT: 'var(--void)',
+          50: 'var(--void-50)',
+          100: 'var(--void-100)',
+          200: 'var(--void-200)',
+          300: 'var(--void-300)',
         },
-        // Titanium neutrals
+        // Titanium neutrals (theme-aware via CSS variables)
         titanium: {
-          50: '#f4f6fb',
-          100: '#dfe3ee',
-          200: '#b9c0d4',
-          300: '#8b94ad',
-          400: '#5f6781',
-          500: '#3f465c',
+          50: 'var(--titanium-50)',
+          100: 'var(--titanium-100)',
+          200: 'var(--titanium-200)',
+          300: 'var(--titanium-300)',
+          400: 'var(--titanium-400)',
+          500: 'var(--titanium-500)',
         },
-        // Aurora accents
+        // Aurora accents (theme-aware)
         aurora: {
-          cyan: '#5ee7e0',
-          ice: '#7cc6ff',
-          violet: '#9d8cff',
-          ember: '#ff9d7a',
-          mint: '#7affc4',
+          cyan: 'var(--aurora-cyan)',
+          ice: 'var(--aurora-ice)',
+          violet: 'var(--aurora-violet)',
+          ember: 'var(--aurora-ember)',
+          mint: 'var(--aurora-mint)',
         },
+        // Always-dark text for use on bright accent buttons (both themes).
+        'on-accent': 'var(--on-accent)',
       },
       fontFamily: {
         display: ['var(--font-display)', 'system-ui', 'sans-serif'],
