@@ -37,10 +37,10 @@ export async function measureUploadCf(
   opts: CfUploadOptions = {}
 ): Promise<ThroughputResult> {
   const durationMs = opts.durationMs ?? 10_000;
-  const warmupMs = opts.warmupMs ?? 1500;
-  // 1 MB chunks: large enough to be efficient, small enough that many complete
-  // within the window on slower uplinks so sampling stays continuous.
-  const chunkBytes = opts.chunkBytes ?? 1 * 1024 * 1024;
+  const warmupMs = opts.warmupMs ?? 1000;
+  // 512 KB chunks: on a ~30 Mbps uplink each POST takes ~140ms, so dozens
+  // complete within the window — plenty of per-request speed samples.
+  const chunkBytes = opts.chunkBytes ?? 512 * 1024;
   const streams = opts.streams ?? 3;
 
   const pool: Blob[] = [];
@@ -51,9 +51,18 @@ export async function measureUploadCf(
   const samples: ThroughputSample[] = [];
   const phaseStart = performance.now();
 
+  // Per-request speed samples. This is how Cloudflare's own engine computes
+  // upload bandwidth: time each individual POST and divide its byte size by
+  // its duration. A browser fetch POST resolves only after the whole body is
+  // sent, so each completed request yields one honest throughput reading —
+  // robust even when only a handful finish within the time budget.
+  const reqSpeeds: number[] = [];
+  let peak = 0;
+
   const runStream = async (poolIdx: number): Promise<void> => {
     while (active && !opts.signal?.aborted) {
       const blob = pool[poolIdx % pool.length];
+      const reqStart = performance.now();
       try {
         await fetch(CF_UP, {
           method: 'POST',
@@ -62,37 +71,24 @@ export async function measureUploadCf(
           signal: opts.signal,
           headers: { 'content-type': 'application/octet-stream' },
         });
-        if (!opts.signal?.aborted) confirmedBytes += blob.size;
+        const reqMs = performance.now() - reqStart;
+        if (!opts.signal?.aborted && reqMs > 0) {
+          confirmedBytes += blob.size;
+          const reqMbps = (blob.size * BITS_PER_BYTE) / (reqMs / 1000) / MB;
+          const elapsed = performance.now() - phaseStart;
+          // Exclude warm-up requests (connection ramp) from the final set.
+          if (elapsed >= warmupMs) reqSpeeds.push(reqMbps);
+          const sample: ThroughputSample = { t: elapsed, mbps: reqMbps };
+          samples.push(sample);
+          if (reqMbps > peak) peak = reqMbps;
+          opts.onSample?.(reqMbps, sample);
+        }
       } catch {
         if (!active) return;
         await new Promise((r) => setTimeout(r, 40));
       }
     }
   };
-
-  let lastBytes = 0;
-  let lastT = phaseStart;
-  let peak = 0;
-  let warmupBytes = -1;
-  let warmupTime = 0;
-  const sampler = setInterval(() => {
-    const now = performance.now();
-    const elapsed = now - phaseStart;
-    const dt = (now - lastT) / 1000;
-    if (dt <= 0) return;
-    const deltaBytes = confirmedBytes - lastBytes;
-    const mbps = (deltaBytes * BITS_PER_BYTE) / dt / MB;
-    lastBytes = confirmedBytes;
-    lastT = now;
-    if (warmupBytes < 0 && elapsed >= warmupMs) {
-      warmupBytes = confirmedBytes;
-      warmupTime = now;
-    }
-    const sample: ThroughputSample = { t: elapsed, mbps: Math.max(0, mbps) };
-    samples.push(sample);
-    if (mbps > peak) peak = mbps;
-    opts.onSample?.(mbps, sample);
-  }, 200);
 
   const launched: Promise<void>[] = [];
   for (let i = 0; i < streams; i++) launched.push(runStream(i));
@@ -103,19 +99,27 @@ export async function measureUploadCf(
   });
 
   active = false;
-  clearInterval(sampler);
-  await Promise.race([Promise.allSettled(launched), new Promise((r) => setTimeout(r, 400))]);
+  await Promise.race([Promise.allSettled(launched), new Promise((r) => setTimeout(r, 600))]);
 
   const endTime = performance.now();
   const durationActual = endTime - phaseStart;
 
+  // Aggregate per-request speeds. With multiple concurrent streams the link's
+  // true capacity is the SUM of simultaneous request speeds, so we estimate it
+  // as the median single-request speed times the stream count, then sanity-cap
+  // by the total-bytes-over-time figure (which can't exceed real throughput).
   let mbps: number;
-  if (warmupBytes >= 0 && endTime - warmupTime > 500) {
-    const windowBytes = confirmedBytes - warmupBytes;
-    const windowSec = (endTime - warmupTime) / 1000;
-    mbps = windowSec > 0 ? (windowBytes * BITS_PER_BYTE) / windowSec / MB : 0;
-  } else if (confirmedBytes > 0) {
-    mbps = (confirmedBytes * BITS_PER_BYTE) / (durationActual / 1000) / MB;
+  const usable = reqSpeeds.length ? reqSpeeds : samples.map((s) => s.mbps);
+  if (usable.length > 0) {
+    const sorted = [...usable].sort((a, b) => a - b);
+    const medianReq = sorted[Math.floor(sorted.length / 2)];
+    const aggregate = medianReq * streams;
+    const overall =
+      confirmedBytes > 0
+        ? (confirmedBytes * BITS_PER_BYTE) / (durationActual / 1000) / MB
+        : 0;
+    // Use the aggregate but never report more than the overall transfer allows.
+    mbps = overall > 0 ? Math.min(aggregate, overall * 1.1) : aggregate;
   } else {
     mbps = 0;
   }
