@@ -68,6 +68,12 @@ export interface TestResult {
   isp: string | null;
   /** AI health score 0-100. */
   healthScore: number;
+  /** Loaded latency (ping measured during download) in ms — bufferbloat. */
+  loadedLatency?: number;
+  /** Bufferbloat = loadedLatency - idle ping, in ms. Higher = worse under load. */
+  bufferbloat?: number;
+  /** Connection type from Network Information API: 'wifi' | 'cellular' | 'ethernet' | 'unknown'. */
+  connectionType?: string;
 }
 
 export interface ServerInfo {

@@ -16,6 +16,22 @@
   --aurora-mint: #7affc4;
 }
 
+/* Light theme: a soft, daylight take on the aurora palette. Keeps the same
+   accent hues but flips the canvas to light and darkens text for contrast. */
+[data-theme='light'] {
+  --void: #eef1f7;
+  --void-100: #e3e8f1;
+  --void-200: #d8deea;
+  --titanium-100: #1a1f2e;
+  --titanium-300: #4a5268;
+  --titanium-400: #6b748c;
+  --aurora-cyan: #1bb5ac;
+  --aurora-ice: #3a8fd8;
+  --aurora-violet: #6d5bd0;
+  --aurora-ember: #e07a4f;
+  --aurora-mint: #1faf72;
+}
+
 * {
   -webkit-tap-highlight-color: transparent;
 }
