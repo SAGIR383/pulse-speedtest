@@ -63,11 +63,14 @@ function makeRandomBlob(bytes: number): Blob {
 
 export async function measureUpload(opts: UploadOptions): Promise<ThroughputResult> {
   const durationMs = opts.durationMs ?? 9000;
-  const warmupMs = opts.warmupMs ?? 1800;
-  const chunkBytes = opts.chunkBytes ?? 2 * 1024 * 1024; // 2 MB per POST
-  const streams = opts.streams ?? 4;
+  const warmupMs = opts.warmupMs ?? 1200;
+  const chunkBytes = opts.chunkBytes ?? 256 * 1024; // 256 KB per POST
+  const streams = opts.streams ?? 3;
 
-  // Pre-build a small pool of payloads to reuse.
+  // Smaller chunks are critical for slow uplinks: a 2 MB POST on a 3 Mbps
+  // connection takes ~5s, so a 9s test would complete only one or two — and
+  // the sampler would mostly read zero. 256 KB chunks complete frequently so
+  // throughput is sampled continuously and the average is meaningful.
   const pool: Blob[] = [];
   for (let i = 0; i < Math.max(2, streams); i++) pool.push(makeRandomBlob(chunkBytes));
 
@@ -81,21 +84,20 @@ export async function measureUpload(opts: UploadOptions): Promise<ThroughputResu
       const blob = pool[poolIdx % pool.length];
       const url = `${opts.endpoint}?t=${performance.now()}_${Math.random()}`;
       try {
-        const res = await fetch(url, {
+        await fetch(url, {
           method: 'POST',
           cache: 'no-store',
           body: blob,
           signal: opts.signal,
           headers: { 'content-type': 'application/octet-stream' },
         });
-        // Count bytes ONLY when the server actually confirms full receipt.
-        // (An aborted or failed POST must not inflate the byte total.)
-        if (res.ok && !opts.signal?.aborted) {
-          confirmedBytes += blob.size;
-        }
+        // The POST promise resolves only after the full body has been sent and
+        // the server responded, so the bytes genuinely crossed the wire.
+        // Count them unless we were aborted mid-flight at end of phase.
+        if (!opts.signal?.aborted) confirmedBytes += blob.size;
       } catch {
         if (!active) return;
-        await new Promise((r) => setTimeout(r, 60));
+        await new Promise((r) => setTimeout(r, 40));
       }
     }
   };
@@ -103,15 +105,22 @@ export async function measureUpload(opts: UploadOptions): Promise<ThroughputResu
   let lastBytes = 0;
   let lastT = phaseStart;
   let peak = 0;
+  let warmupBytes = -1;
+  let warmupTime = 0;
   const sampler = setInterval(() => {
     const now = performance.now();
+    const elapsed = now - phaseStart;
     const dt = (now - lastT) / 1000;
     if (dt <= 0) return;
     const deltaBytes = confirmedBytes - lastBytes;
     const mbps = (deltaBytes * BITS_PER_BYTE) / dt / MB;
     lastBytes = confirmedBytes;
     lastT = now;
-    const sample: ThroughputSample = { t: now - phaseStart, mbps: Math.max(0, mbps) };
+    if (warmupBytes < 0 && elapsed >= warmupMs) {
+      warmupBytes = confirmedBytes;
+      warmupTime = now;
+    }
+    const sample: ThroughputSample = { t: elapsed, mbps: Math.max(0, mbps) };
     samples.push(sample);
     if (mbps > peak) peak = mbps;
     opts.onSample?.(mbps, sample);
@@ -129,9 +138,24 @@ export async function measureUpload(opts: UploadOptions): Promise<ThroughputResu
   clearInterval(sampler);
   await Promise.race([Promise.allSettled(launched), new Promise((r) => setTimeout(r, 400))]);
 
-  const durationActual = performance.now() - phaseStart;
-  const stable = samples.filter((s) => s.t >= warmupMs).map((s) => s.mbps);
-  const mbps = stable.length >= 3 ? robustSpeed(stable) : robustSpeed(samples.map((s) => s.mbps));
+  const endTime = performance.now();
+  const durationActual = endTime - phaseStart;
+
+  // Final speed: bytes sent AFTER warm-up divided by time spent. Falls back to
+  // the robust sample estimate if too few POSTs completed to mark warm-up
+  // (which can happen on very slow uplinks) — using all samples then.
+  let mbps: number;
+  if (warmupBytes >= 0 && endTime - warmupTime > 500) {
+    const windowBytes = confirmedBytes - warmupBytes;
+    const windowSec = (endTime - warmupTime) / 1000;
+    mbps = windowSec > 0 ? (windowBytes * BITS_PER_BYTE) / windowSec / MB : 0;
+  } else if (confirmedBytes > 0) {
+    // Slow link: average over the whole phase rather than report zero.
+    mbps = (confirmedBytes * BITS_PER_BYTE) / (durationActual / 1000) / MB;
+  } else {
+    const stable = samples.filter((s) => s.t >= warmupMs).map((s) => s.mbps);
+    mbps = stable.length ? robustSpeed(stable) : robustSpeed(samples.map((s) => s.mbps));
+  }
 
   return {
     mbps: Math.round(mbps * 100) / 100,

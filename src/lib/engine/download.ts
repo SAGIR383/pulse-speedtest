@@ -104,8 +104,14 @@ export async function measureDownload(opts: DownloadOptions): Promise<Throughput
   let lastBytes = 0;
   let lastT = phaseStart;
   let peak = 0;
+  // Mark the byte/time position at the moment warm-up ends, so the final
+  // figure is computed as (bytes since warm-up) / (time since warm-up) —
+  // the standard, accurate method used by real speed tests.
+  let warmupBytes = -1;
+  let warmupTime = 0;
   const sampler = setInterval(() => {
     const now = performance.now();
+    const elapsed = now - phaseStart;
     const dt = (now - lastT) / 1000;
     if (dt <= 0) return;
     const deltaBytes = totalBytes - lastBytes;
@@ -113,16 +119,16 @@ export async function measureDownload(opts: DownloadOptions): Promise<Throughput
     lastBytes = totalBytes;
     lastT = now;
 
-    const sample: ThroughputSample = { t: now - phaseStart, mbps: Math.max(0, mbps) };
+    // Capture the warm-up boundary exactly once.
+    if (warmupBytes < 0 && elapsed >= warmupMs) {
+      warmupBytes = totalBytes;
+      warmupTime = now;
+    }
+
+    const sample: ThroughputSample = { t: elapsed, mbps: Math.max(0, mbps) };
     samples.push(sample);
     if (mbps > peak) peak = mbps;
     opts.onSample?.(mbps, sample);
-
-    // Adaptive scaling during warm-up: saturate fast links.
-    if (now - phaseStart < warmupMs && mbps > 50 && streams < 8) {
-      streams++;
-      void runStream();
-    }
   }, 200);
 
   // Launch initial streams.
@@ -140,11 +146,22 @@ export async function measureDownload(opts: DownloadOptions): Promise<Throughput
   // Let streams unwind.
   await Promise.race([Promise.allSettled(launched), new Promise((r) => setTimeout(r, 400))]);
 
-  const durationActual = performance.now() - phaseStart;
+  const endTime = performance.now();
+  const durationActual = endTime - phaseStart;
 
-  // Final speed: robust median-weighted estimate of samples AFTER warm-up.
-  const stable = samples.filter((s) => s.t >= warmupMs).map((s) => s.mbps);
-  const mbps = stable.length >= 3 ? robustSpeed(stable) : robustSpeed(samples.map((s) => s.mbps));
+  // Final speed: bytes transferred AFTER warm-up divided by the time spent.
+  // This averages over the whole stable window and is naturally resistant to
+  // the momentary bursts a nearby CDN edge can produce. Fall back to the
+  // robust sample estimate only if the warm-up boundary was never captured.
+  let mbps: number;
+  if (warmupBytes >= 0) {
+    const windowBytes = totalBytes - warmupBytes;
+    const windowSec = (endTime - warmupTime) / 1000;
+    mbps = windowSec > 0 ? (windowBytes * BITS_PER_BYTE) / windowSec / MB : 0;
+  } else {
+    const stable = samples.filter((s) => s.t >= warmupMs).map((s) => s.mbps);
+    mbps = stable.length ? robustSpeed(stable) : robustSpeed(samples.map((s) => s.mbps));
+  }
 
   return {
     mbps: Math.round(mbps * 100) / 100,

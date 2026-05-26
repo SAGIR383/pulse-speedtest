@@ -42,18 +42,19 @@ async function reverseGeocode(lat: number, lng: number): Promise<Partial<Locatio
 }
 
 async function ipFallback(): Promise<LocationInfo | null> {
-  // ipapi.co free tier — no API key required, returns coarse city-level location + ISP.
+  // Use our own server-side geo endpoint — avoids browser CORS/rate-limit/
+  // ad-blocker failures that made direct third-party lookups return nothing.
   try {
-    const res = await fetch('https://ipapi.co/json/');
-    if (!res.ok) throw new Error('ip lookup failed');
+    const res = await fetch('/api/geo', { cache: 'no-store' });
+    if (!res.ok) throw new Error('geo lookup failed');
     const d = await res.json();
-    if (typeof d.latitude !== 'number') return null;
+    if (typeof d.lat !== 'number') return null;
     return {
-      lat: d.latitude,
-      lng: d.longitude,
+      lat: d.lat,
+      lng: d.lng,
       city: d.city ?? null,
       region: d.region ?? null,
-      country: d.country_name ?? null,
+      country: d.country ?? null,
       source: 'ip',
       accuracyM: null,
     };
@@ -64,10 +65,10 @@ async function ipFallback(): Promise<LocationInfo | null> {
 
 export async function detectIsp(): Promise<string | null> {
   try {
-    const res = await fetch('https://ipapi.co/json/');
+    const res = await fetch('/api/geo', { cache: 'no-store' });
     if (!res.ok) return null;
     const d = await res.json();
-    return d.org ?? d.asn ?? null;
+    return d.isp ?? null;
   } catch {
     return null;
   }
