@@ -8,7 +8,6 @@ import { getResults, clearResults } from '@/lib/db/history';
 import type { TestResult } from '@/lib/engine/types';
 import Header from '@/components/layout/Header';
 import InstallPrompt from '@/components/layout/InstallPrompt';
-import EnvBanner from '@/components/layout/EnvBanner';
 import TestStage from '@/components/test/TestStage';
 import ResultsView from '@/components/test/ResultsView';
 import HistoryDashboard from '@/components/analytics/HistoryDashboard';
@@ -78,8 +77,6 @@ export default function Page() {
               exit={{ opacity: 0 }}
               className="pt-4"
             >
-              <EnvBanner />
-
               {/* Idle / hero state */}
               {showIdle && (
                 <motion.div
@@ -180,9 +177,9 @@ export default function Page() {
       <InstallPrompt />
 
       <footer className="w-full max-w-5xl mx-auto px-6 py-6 text-center text-[11px] text-titanium-400">
-        Pulse measures real throughput between your browser and the server answering it.
-        On localhost that path is your own machine — deploy to measure your real connection.
-        Results are stored locally on your device.
+        Pulse measures your real internet speed — download, upload, ping, jitter and more — then turns
+        it into clear answers: can you stream 4K, game, or make smooth video calls? Plus monitor mode,
+        outage checking, and shareable results.
       </footer>
     </main>
   );
