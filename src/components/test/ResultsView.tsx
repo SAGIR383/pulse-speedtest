@@ -10,6 +10,7 @@ import AnimatedNumber from './AnimatedNumber';
 import Icon from '@/components/ui/Icon';
 import { formatMbps } from '@/lib/utils/format';
 import PlanComparison from '@/components/analytics/PlanComparison';
+import WatchNow from '@/components/analytics/WatchNow';
 import { shareResultCard } from '@/lib/utils/share';
 
 interface ResultsViewProps {
@@ -121,6 +122,9 @@ export default function ResultsView({ result, diagnostics, onRetest }: ResultsVi
           <InsightCard key={card.id} card={card} index={i} />
         ))}
       </div>
+
+      {/* Actionable streaming recommendation */}
+      <WatchNow tiers={diagnostics.streaming} download={result.download} />
 
       {/* Streaming + recommendations */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

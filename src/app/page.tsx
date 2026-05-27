@@ -13,6 +13,7 @@ import TestStage from '@/components/test/TestStage';
 import ResultsView from '@/components/test/ResultsView';
 import HistoryDashboard from '@/components/analytics/HistoryDashboard';
 import MonitorPanel from '@/components/layout/MonitorPanel';
+import ServiceChecker from '@/components/analytics/ServiceChecker';
 import { useAutoTest } from '@/lib/hooks/useAutoTest';
 import Icon from '@/components/ui/Icon';
 
@@ -140,6 +141,11 @@ export default function Page() {
                       )}
                     </div>
                     <NetworkMap location={location} nodes={nodes} className="h-72" />
+                  </div>
+
+                  {/* "Is it down, or is it me?" service checker */}
+                  <div className="w-full mt-6">
+                    <ServiceChecker />
                   </div>
                 </motion.div>
               )}
