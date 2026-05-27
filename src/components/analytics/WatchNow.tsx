@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import type { StreamingTier } from '@/lib/engine/types';
 import Icon from '@/components/ui/Icon';
+import SampleVideoPlayer from '@/components/analytics/SampleVideoPlayer';
 
 /**
  * WatchNow — turns the streaming-capability analysis into an actionable
@@ -16,15 +17,6 @@ import Icon from '@/components/ui/Icon';
  */
 
 const COMFORT_MARGIN = 1.3;
-
-// Reference YouTube clips chosen for being explicitly available at each tier.
-// (Generic links — they open YouTube/Netflix where the user picks quality.)
-const LINKS = {
-  youtube: 'https://www.youtube.com/',
-  youtubeTest: 'https://www.youtube.com/results?search_query=4k+60fps+test+video',
-  netflix: 'https://www.netflix.com/',
-  fastcom: 'https://fast.com/', // Netflix's own speed test, good "verify" link
-};
 
 function pickRecommended(tiers: StreamingTier[]): StreamingTier | null {
   // Highest tier the user clears comfortably.
@@ -125,35 +117,10 @@ export default function WatchNow({
               })}
           </div>
 
-          {/* One-tap actions */}
+          {/* In-app sample video player at selectable resolutions */}
           {canStream && (
-            <div className="mt-4 flex flex-wrap gap-2.5">
-              <a
-                href={LINKS.youtube}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-aurora-cyan to-aurora-ice px-4 py-2 text-sm font-medium text-on-accent transition-transform hover:scale-[1.03] active:scale-95"
-              >
-                <Icon name="play" size={14} />
-                Watch on YouTube
-              </a>
-              <a
-                href={LINKS.netflix}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full surface px-4 py-2 text-sm font-medium text-titanium-200 transition-transform hover:scale-[1.03] active:scale-95 hover:text-titanium-100"
-              >
-                <Icon name="play" size={14} />
-                Open Netflix
-              </a>
-              <a
-                href={LINKS.fastcom}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-full surface px-4 py-2 text-sm text-titanium-300 transition-transform hover:scale-[1.03] active:scale-95 hover:text-titanium-100"
-              >
-                Verify on Fast.com
-              </a>
+            <div className="mt-5">
+              <SampleVideoPlayer maxSupported={rec?.resolution === '2160p' ? '4K' : rec?.resolution} />
             </div>
           )}
 
